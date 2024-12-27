@@ -2,22 +2,22 @@ Shift Assignments for Week 1:
 ==================================================
 
   Setup:
-    - Mandy Woo
+    - Kara Statham
     - Rhea Shetti
-    - Jessica (Jay) Sotelo
-    - Sharon Ma (Leader)
-    - Heather Nguyen Phuoc (Leader)
-    - Nandita Paranjape
-    - Aasha Sendhil
+    - Cali Kuang (Leader)
+    - Sophia Shaw
+    - Mikayla McGrath (Leader)
     - Charity Fan
+    - Julianna Nacorda
+    - Sophia Zhang
 
   Cleanup:
-    - Kaelyn Sung
     - Emily Tom
-    - Celine Trieu (Leader)
-    - Viviana Salazar
-    - Sonia Kaczer
-    - Jaylene Nguyen
+    - Jaylene Nguyen (Leader)
+    - Kaelyn Sung
+    - Nandita Paranjape
+    - Jessica (Jay) Sotelo
+    - Paris Haraguchi
 
 
 --------------------------------------------------
@@ -26,29 +26,22 @@ Shift Assignments for Week 2:
 ==================================================
 
   Setup:
-    - Amanda Hausmann
-    - Bao Ka Lue Chang
-    - Amratha Rao (Leader)
-    - Tiffany Cheung
-    - Cheryl Chen
-    - Shriya Bhamidipati
-    - Paris Haraguchi
-    - Kara Statham
-    - Kristen Yee
+    - Lahari Yallapragada
+    - Aasha Sendhil (Leader)
+    - Megan Sun
+    - Sharon Ma (Leader)
+    - Sonia Kaczer
     - Sarah Tan
-    - Sophia Zhang
-    - Thuy (Sally) Nguyen
-    - Julia Tjia
-    - Shalini Bhakta
-    - Ella Chung (Leader)
+    - Shriya Bhamidipati
+    - Olivia Sismaet
 
   Cleanup:
-    - Sanika Bhamare (Leader)
     - Lizbeth Ramirez
-    - Lahari Yallapragada
-    - Jisha Rajala
-    - Cali Kuang
-    - Sharon Leo
+    - Sanika Bhamare (Leader)
+    - Bao Ka Lue Chang
+    - Viviana Salazar
+    - Amanda Hausmann
+    - Josephine Bhadran
 
 
 --------------------------------------------------
@@ -57,22 +50,22 @@ Shift Assignments for Week 4:
 ==================================================
 
   Setup:
-    - Karen Huang
-    - Julianna Nacorda
-    - Olivia Sismaet
-    - Mikayla McGrath (Leader)
     - Aishwarya Thadiparthi (Leader)
-    - Josephine Bhadran
-    - Megan Sun
+    - Shalini Bhakta
+    - Heather Nguyen Phuoc (Leader)
+    - Cheryl Chen
+    - Thuy (Sally) Nguyen
     - Tiffany Kong
+    - Kristen Yee
+    - Tiffany Cheung
 
   Cleanup:
+    - Mae King (Leader)
     - Jenny Liu
     - Arianna Gonzalez
     - Alisa Lu
-    - Mae King (Leader)
-    - Viviana Salazar
-    - Sanika Bhamare
+    - Jisha Rajala
+    - Jaylene Nguyen
 
 
 --------------------------------------------------
@@ -81,22 +74,22 @@ Shift Assignments for Week 5:
 ==================================================
 
   Setup:
-    - Sophia Shaw
-    - Erika Young
-    - Karen Huang
-    - Rhea Shetti
-    - Tiffany Kong
-    - Sharon Ma (Leader)
-    - Nandita Paranjape
     - Ella Chung (Leader)
+    - Amanda Hausmann
+    - Erika Young
+    - Julia Tjia
+    - Karen Huang
+    - Amratha Rao (Leader)
+    - Sarah Tan
+    - Julianna Nacorda
 
   Cleanup:
-    - Kaelyn Sung
-    - Josephine Bhadran
-    - Jessica (Jay) Sotelo
+    - Arianna Gonzalez
     - Paris Haraguchi
-    - Alisa Lu
-    - Jaylene Nguyen (Leader)
+    - Sonia Kaczer
+    - Cali Kuang (Leader)
+    - Sharon Leo
+    - Jessica (Jay) Sotelo
 
 
 --------------------------------------------------
@@ -105,27 +98,22 @@ Shift Assignments for Week 6:
 ==================================================
 
   Setup:
-    - Julia Tjia
-    - Jisha Rajala
-    - Kara Statham
-    - Shalini Bhakta
-    - Sophia Zhang
     - Celine Trieu (Leader)
-    - Julianna Nacorda
     - Sophia Shaw
-    - Olivia Sismaet
-    - Arianna Gonzalez
-    - Sarah Tan
-    - Megan Sun
-    - Aishwarya Thadiparthi (Leader)
+    - Sophia Zhang
+    - Heather Nguyen Phuoc (Leader)
+    - Shriya Bhamidipati
+    - Thuy (Sally) Nguyen
+    - Nandita Paranjape
+    - Cheryl Chen
 
   Cleanup:
-    - Lizbeth Ramirez
-    - Charity Fan
-    - Sonia Kaczer
-    - Mikayla McGrath (Leader)
-    - Lahari Yallapragada
-    - Amanda Hausmann
+    - Mae King (Leader)
+    - Viviana Salazar
+    - Bao Ka Lue Chang
+    - Jisha Rajala
+    - Kaelyn Sung
+    - Megan Sun
 
 
 --------------------------------------------------
@@ -134,22 +122,22 @@ Shift Assignments for Week 8:
 ==================================================
 
   Setup:
-    - Mandy Woo
-    - Heather Nguyen Phuoc (Leader)
-    - Bao Ka Lue Chang
-    - Cheryl Chen
-    - Kristen Yee
-    - Thuy (Sally) Nguyen
-    - Shriya Bhamidipati
-    - Cali Kuang (Leader)
+    - Josephine Bhadran
+    - Sanika Bhamare (Leader)
+    - Aishwarya Thadiparthi (Leader)
+    - Tiffany Kong
+    - Sharon Leo
+    - Alisa Lu
+    - Rhea Shetti
+    - Erika Young
 
   Cleanup:
-    - Jenny Liu
-    - Tiffany Cheung
-    - Sharon Leo
-    - Mae King (Leader)
-    - Aasha Sendhil
+    - Lizbeth Ramirez
     - Emily Tom
+    - Aasha Sendhil (Leader)
+    - Mikayla McGrath
+    - Jenny Liu
+    - Charity Fan
 
 
 --------------------------------------------------
@@ -158,22 +146,22 @@ Shift Assignments for Week 9:
 ==================================================
 
   Setup:
-    - Erika Young
-    - Amratha Rao (Leader)
-    - Viviana Salazar
-    - Lahari Yallapragada
-    - Megan Sun
     - Olivia Sismaet
-    - Heather Nguyen Phuoc (Leader)
-    - Sophia Shaw
+    - Amratha Rao (Leader)
+    - Ella Chung (Leader)
+    - Kristen Yee
+    - Shalini Bhakta
+    - Julia Tjia
+    - Mandy Woo
+    - Karen Huang
 
   Cleanup:
-    - Jessica (Jay) Sotelo
-    - Kaelyn Sung
-    - Josephine Bhadran
-    - Nandita Paranjape
+    - Sharon Ma (Leader)
     - Tiffany Cheung
-    - Jaylene Nguyen (Leader)
+    - Josephine Bhadran
+    - Charity Fan
+    - Sharon Leo
+    - Lahari Yallapragada
 
 
 --------------------------------------------------
@@ -182,22 +170,22 @@ Shift Assignments for Week 10:
 ==================================================
 
   Setup:
+    - Mikayla McGrath (Leader)
+    - Celine Trieu (Leader)
+    - Kara Statham
+    - Bao Ka Lue Chang
     - Sonia Kaczer
-    - Amanda Hausmann
-    - Sanika Bhamare (Leader)
-    - Paris Haraguchi
-    - Rhea Shetti
-    - Sharon Ma (Leader)
-    - Karen Huang
+    - Shalini Bhakta
+    - Jessica (Jay) Sotelo
     - Julia Tjia
 
   Cleanup:
-    - Emily Tom
-    - Jenny Liu
-    - Alisa Lu
-    - Celine Trieu (Leader)
-    - Arianna Gonzalez
     - Lizbeth Ramirez
+    - Jaylene Nguyen (Leader)
+    - Rhea Shetti
+    - Olivia Sismaet
+    - Paris Haraguchi
+    - Mandy Woo
 
 
 --------------------------------------------------
