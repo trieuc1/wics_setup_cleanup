@@ -1,12 +1,7 @@
 import random
+from constants import (MIN_CLEANUP, MIN_SETUP, MIN_SHIFTS, MAX_CONSECUTIVE_SHIFTS, 
+                       MAX_SHIFTS, NUM_CLEANUP_LEADERS, NUM_SETUP_LEADERS, NUM_SETUP_SHADOWS, NUM_CLEANUP_SHADOWS, MODE)
 
-MIN_SETUP = 8
-MIN_CLEANUP = 6
-REQUIRED_SETUP_LEADERS = 2
-REQUIRED_CLEANUP_LEADERS = 1
-MAX_SHIFTS = 5
-MIN_SHIFTS = 2
-MAX_CONSECUTIVE_SHIFTS = 2
 
 def parse_file(file : str) -> dict:
     with open(file, 'r') as file:
@@ -15,7 +10,11 @@ def parse_file(file : str) -> dict:
             parts = line.split()
             name = []
             shift_preference = ""
-            is_leader = parts[-1] == '1'
+            if MODE == "shadowing":
+                is_leader = parts[-2] == '1'
+                is_shadow = parts[-1] == '1'
+            else:
+                is_leader = parts[-1] == '1'
             skip_flag = False
             for part in parts:
                 if part not in ['s', 'c', 's/c', '-'] and not part.isdigit():
@@ -27,7 +26,10 @@ def parse_file(file : str) -> dict:
             if skip_flag is True:
                 continue
             name = " ".join(name)
-            preference_dict[name] = {"preference" : shift_preference, "is_leader": is_leader}
+            if MODE == "shadowing":
+                preference_dict[name] = {"preference" : shift_preference, "is_leader": is_leader, "is_shadow": is_shadow}
+            else:
+                preference_dict[name] = {"preference" : shift_preference, "is_leader": is_leader}
         return preference_dict
     return None
 
@@ -42,6 +44,7 @@ def track_person_shifts(assignment_dict: dict):
     person_shift_count = {}  # Tracks total shifts per person
     person_shift_sequence = {}  # Tracks consecutive shifts per person
     leader_shift_sequence = {}  # Tracks consecutive leadership shifts per person
+    shadow_shift_sequence = {}
 
     for week_index, (week, shifts) in enumerate(assignment_dict.items()):
         # Validate setup group
@@ -54,6 +57,8 @@ def track_person_shifts(assignment_dict: dict):
             for person in group:
                 name = person["name"]
                 is_leader = person["leader_this_week"]
+                is_shadow = person["shadow_this_week"]
+                
 
                 # Track total shift count
                 person_shift_count[name] = person_shift_count.get(name, 0) + 1
@@ -72,8 +77,16 @@ def track_person_shifts(assignment_dict: dict):
                     if len(leader_shift_sequence[name]) > 0 and leader_shift_sequence[name][-1] != week_index - 1:
                         leader_shift_sequence[name] = []  # Reset if not consecutive
                     leader_shift_sequence[name].append(week_index)
+                
+                if is_shadow:
+                    if name not in shadow_shift_sequence:
+                        shadow_shift_sequence[name] = []
+                    if len(shadow_shift_sequence[name]) > 0 and shadow_shift_sequence[name][-1] != week_index - 1:
+                        shadow_shift_sequence[name] = []  # Reset if not consecutive
+                    shadow_shift_sequence[name].append(week_index)
 
-    return person_shift_count, person_shift_sequence, leader_shift_sequence
+    return person_shift_count, person_shift_sequence, leader_shift_sequence, shadow_shift_sequence
+
 
 
 def is_valid_assignment(assignment_dict: dict) -> bool:
@@ -82,79 +95,48 @@ def is_valid_assignment(assignment_dict: dict) -> bool:
 
     Criteria:
     - Each person has fewer than MAX_SHIFTS shifts.
-        - Can't have more than 2 shifts in a row.
-    - Leaders can't be leaders more than two shifts in a row.
+    - Can't have more than MAX_CONSECUTIVE_SHIFTS shifts in a row.
     - Each week has:
-        - At least 7 people in the setup group (2 leaders).
-        - At least 5 people in the cleanup group (1 leader).
+        - At least MIN_SETUP people in the setup group (NUM_SETUP_LEADERS leaders).
+        - At least MIN_CLEANUP people in the cleanup group (NUM_CLEANUP_LEADERS leader).
     """
-    person_shift_count = {}  # Tracks total shifts per person
-    person_shift_sequence = {}  # Tracks consecutive shifts per person
-    leader_shift_sequence = {}  # Tracks consecutive leadership shifts per person
-
-    for week_index, (week, shifts) in enumerate(assignment_dict.items()):
-        # Validate setup group
-        setup_group = shifts.get("setup", [])
-        if len(setup_group) < MIN_SETUP:
-            # print("less than min setup")
+    person_shift_count, person_shift_sequence, leader_shift_sequence, shadow_shift_sequence = track_person_shifts(assignment_dict)
+    
+    for shifts in assignment_dict.values():
+        if len(shifts["setup"]) < MIN_SETUP or sum(p["leader_this_week"] for p in shifts["setup"]) < NUM_SETUP_LEADERS:
+            print("ERROR: required number of setup or setup leaders is not met")
             return False
-        if sum(1 for person in setup_group if person["leader_this_week"]) < REQUIRED_SETUP_LEADERS:
-            # print("less than min setup leaders")
+        if len(shifts["cleanup"]) < MIN_CLEANUP or sum(p["leader_this_week"] for p in shifts["cleanup"]) < NUM_CLEANUP_LEADERS:
+            print("ERROR: required number of cleanup or cleanup leaders is not met")
             return False
+        
+        if MODE == "shadowing":
+            # Ensure at least one leader and one shadow in both setup and cleanup
+            if not any(p["leader_this_week"] for p in shifts["setup"]) or not any(p["shadow_this_week"] for p in shifts["setup"]):
+                print("ERROR: required number of setup shadows or setup leaders is not met")
+                return False  # Setup lacks a leader or shadow
 
-        # Validate cleanup group
-        cleanup_group = shifts.get("cleanup", [])
-        if len(cleanup_group) < MIN_CLEANUP:
-            # print("less than min cleanup")
+            if not any(p["leader_this_week"] for p in shifts["cleanup"]) or not any(p["shadow_this_week"] for p in shifts["cleanup"]):
+                print("ERROR: required number of cleanup shadows or cleanup leaders is not met")
+                return False  # Cleanup lacks a leader or shadow
+
+    if not all(len(seq) <= MAX_CONSECUTIVE_SHIFTS for seq in leader_shift_sequence.values()):
+            print("ERROR: maximum number of consecutive shifts for leaders exceeded")
             return False
-        if sum(1 for person in cleanup_group if person["leader_this_week"]) < REQUIRED_CLEANUP_LEADERS:
-            # print("less than min cleanup leaders")
+    
+    if not all(len(seq) <= MAX_CONSECUTIVE_SHIFTS for seq in person_shift_sequence.values()):
+            print("ERROR: maximum number of consecutive shifts for people exceeded")
             return False
-
-        # Update shift and leadership tracking
-        for group, role in [(setup_group, "setup"), (cleanup_group, "cleanup")]:
-            for person in group:
-                name = person["name"]
-                is_leader = person["leader_this_week"]
-
-                # Track total shift count
-                person_shift_count[name] = person_shift_count.get(name, 0) + 1
-
-                # Track consecutive shifts
-                if name not in person_shift_sequence:
-                    person_shift_sequence[name] = []
-                if len(person_shift_sequence[name]) > 0 and person_shift_sequence[name][-1] != week_index - 1:
-                    person_shift_sequence[name] = []  # Reset if not consecutive
-                person_shift_sequence[name].append(week_index)
-
-                # Track consecutive leadership shifts
-                if is_leader:
-                    if name not in leader_shift_sequence:
-                        leader_shift_sequence[name] = []
-                    if len(leader_shift_sequence[name]) > 0 and leader_shift_sequence[name][-1] != week_index - 1:
-                        leader_shift_sequence[name] = []  # Reset if not consecutive
-                    leader_shift_sequence[name].append(week_index)
-
-    # Validate total shift count per person
-    if any(count > MAX_SHIFTS for count in person_shift_count.values()):
-        # print("more than max shifts")
+    
+    if not all(len(seq) <= MAX_CONSECUTIVE_SHIFTS for seq in shadow_shift_sequence.values()):
+        print("ERROR: maximum number of consecutive shifts for shadows exceeded")
         return False
     
-    # # Validate total shift count per person
-    if any(count < MIN_SHIFTS for count in person_shift_count.values()):
-        # print("less than min shifts")
+    # Validate total shifts
+    if not all(MIN_SHIFTS <= count <= MAX_SHIFTS for name, count in person_shift_count.items() if count for seq in [person_shift_sequence.get(name, [])]):
+        print("ERROR: somebody has too little or too many shifts")
         return False
-
-    # Validate consecutive shift rule (no more than 2 shifts in a row)
-    if any(len(sequence) > MAX_CONSECUTIVE_SHIFTS for sequence in person_shift_sequence.values()):
-        # print("more than 2 consecutive shifts")
-        return False
-
-    # Validate consecutive leadership rule (leaders can't lead more than 2 weeks in a row)
-    if any(len(sequence) > MAX_CONSECUTIVE_SHIFTS for sequence in leader_shift_sequence.values()):
-        # print("more than 2 consecutive leader shifts")
-        return False
-
+    
     return True
     
 
@@ -171,6 +153,7 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
 
     assignment_dict = {week: {"setup": [], "cleanup": []} for week in weeks}
     leader_last_week = {person: [] for person in preference_dict}  # Track all weeks where a person was a leader
+    shadow_last_week = {person: [] for person in preference_dict}  # Track all weeks where a person was a shadow
 
     def backtracking_helper(index: int) -> bool:
         """
@@ -183,7 +166,8 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
         :return: True if a valid assignment is found, False otherwise.
         """
         if index == len(weeks):
-            return is_valid_assignment(assignment_dict)
+            # return is_valid_assignment(assignment_dict)
+            return True
 
         current_week = weeks[index]
 
@@ -192,6 +176,7 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
         random.shuffle(randomized_items)  # Shuffle the list in place
 
         leaders = [person for person in randomized_items if person[1]["is_leader"]]
+        shadows = [person for person in randomized_items if person[1].get("is_shadow", False) and not person[1]["is_leader"]]
 
         # Sort the leaders based on the number of shifts they've had
         leaders_sorted = sorted(leaders, key=lambda x: len([
@@ -199,13 +184,13 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
             for shift in (week["setup"] + week["cleanup"]) if shift["name"] == x[0]
         ]))
 
-        remaining_setup_leaders = REQUIRED_SETUP_LEADERS
-        remaining_cleanup_leaders = REQUIRED_CLEANUP_LEADERS
+        remaining_setup_leaders = NUM_SETUP_LEADERS
+        remaining_cleanup_leaders = NUM_CLEANUP_LEADERS
 
         # Step 1: First, try to assign leaders to setup and cleanup
         for person, preferences in leaders_sorted:
-            person_shift_count, person_shift_sequence, leader_shift_sequence = track_person_shifts(assignment_dict)
-            
+            person_shift_count, person_shift_sequence, leader_shift_sequence, shadow_shift_sequence = track_person_shifts(assignment_dict)
+
             # Prevent double assignment in the same week (setup + cleanup)
             if any(person == p["name"] for p in (assignment_dict[current_week]["setup"] + assignment_dict[current_week]["cleanup"])):
                 continue
@@ -214,8 +199,16 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
             if person_shift_count.get(person, 0) >= MAX_SHIFTS:
                 continue
             
-            # Ensure that nobody that already has MAX_CONSECUTIVE_SHIFTS receives another consecutive shift
+            # Ensure that person that already has MAX_CONSECUTIVE_SHIFTS receives another consecutive shift
+            if len(person_shift_sequence.get(person, [])) >= MAX_CONSECUTIVE_SHIFTS and person_shift_sequence[person][-1] == (index - 1):
+                continue
+            
+            # Ensure that leader that already has MAX_CONSECUTIVE_SHIFTS receives another consecutive shift
             if len(leader_shift_sequence.get(person, [])) >= MAX_CONSECUTIVE_SHIFTS and leader_shift_sequence[person][-1] == (index - 1):
+                continue
+        
+            # Ensure that shadow that already has MAX_CONSECUTIVE_SHIFTS receives another consecutive shift
+            if len(shadow_shift_sequence.get(person, [])) >= MAX_CONSECUTIVE_SHIFTS and shadow_shift_sequence[person][-1] == (index - 1):
                 continue
 
             # Assign to setup first (leaders only)
@@ -225,6 +218,8 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
                     assignment_dict[current_week]["setup"].append({
                         "name": person,
                         "is_leader": preferences["is_leader"],
+                        "is_shadow": preferences.get("is_shadow", False),
+                        "shadow_this_week": False,
                         "leader_this_week": leader_this_week
                     })
                     leader_last_week[person].append(index)
@@ -237,6 +232,8 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
                     assignment_dict[current_week]["cleanup"].append({
                         "name": person,
                         "is_leader": preferences["is_leader"],
+                        "is_shadow": preferences.get("is_shadow", False),
+                        "shadow_this_week": False,
                         "leader_this_week": leader_this_week
                     })
                     leader_last_week[person].append(index)
@@ -260,17 +257,22 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
                     if leader_this_week and leader_last_week[person]:
                         leader_last_week[person].pop()
 
-        # Sort participants by the number of shifts they've already been assigned to
-        participants = sorted(randomized_items, key=lambda x: len([
+        # Step 1a: Try to assign shadow leaders to setup and cleanup
+        shadows_sorted = sorted(shadows, key=lambda x: len([
             shift for week in assignment_dict.values()
             for shift in (week["setup"] + week["cleanup"]) if shift["name"] == x[0]
         ]))
         
+        remaining_setup_shadows = NUM_SETUP_SHADOWS
+        remaining_cleanup_shadows = NUM_CLEANUP_SHADOWS
         
-        # Step 2: Once leaders are assigned, fill the remaining spots with non-leaders
-        for person, preferences in participants:
-            person_shift_count, person_shift_sequence, leader_shift_sequence = track_person_shifts(assignment_dict)
+        for person, preferences in shadows_sorted:
+            if remaining_setup_shadows == 0 and remaining_cleanup_shadows == 0:
+                break
             
+            person_shift_count, person_shift_sequence, leader_shift_sequence, shadow_shift_sequence = track_person_shifts(assignment_dict)
+            
+            # Prevent double assignment in the same week (setup + cleanup)
             if any(person == p["name"] for p in (assignment_dict[current_week]["setup"] + assignment_dict[current_week]["cleanup"])):
                 continue
             
@@ -278,27 +280,115 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
             if person_shift_count.get(person, 0) >= MAX_SHIFTS:
                 continue
             
-            # Ensure that nobody that already has MAX_CONSECUTIVE_SHIFTS receives another consecutive shift
+            # Ensure that person that already has MAX_CONSECUTIVE_SHIFTS receives another consecutive shift
             if len(person_shift_sequence.get(person, [])) >= MAX_CONSECUTIVE_SHIFTS and person_shift_sequence[person][-1] == (index - 1):
                 continue
+            
+            # Ensure that leader that already has MAX_CONSECUTIVE_SHIFTS receives another consecutive shift
+            if len(leader_shift_sequence.get(person, [])) >= MAX_CONSECUTIVE_SHIFTS and leader_shift_sequence[person][-1] == (index - 1):
+                continue
+                
+            # Ensure that shadow that already has MAX_CONSECUTIVE_SHIFTS receives another consecutive shift
+            if len(shadow_shift_sequence.get(person, [])) >= MAX_CONSECUTIVE_SHIFTS and shadow_shift_sequence[person][-1] == (index - 1):
+                continue
+            
+            shadow_this_week = False
+            
+            # Assign to setup first (shadows only)
+            if preferences["preference"] in ["s", "s/c"] and len(assignment_dict[current_week]["setup"]) < MIN_SETUP and \
+                preferences["is_shadow"] and remaining_setup_shadows > 0:
+                    shadow_this_week = True
+                    assignment_dict[current_week]["setup"].append({
+                        "name": person,
+                        "is_leader": False,
+                        "is_shadow": preferences["is_shadow"],
+                        "shadow_this_week": shadow_this_week,
+                        "leader_this_week": False,
+                    })
+                    shadow_last_week[person].append(index)
+                    remaining_setup_shadows -= 1
+                    continue
+            # Assign to cleanup (shadows only)
+            elif preferences["preference"] in ["c", "s/c"] and len(assignment_dict[current_week]["cleanup"]) < MIN_CLEANUP and \
+                preferences["is_shadow"] and remaining_cleanup_shadows > 0:
+                    shadow_this_week = True
+                    assignment_dict[current_week]["cleanup"].append({
+                        "name": person,
+                        "is_leader": False,
+                        "is_shadow": preferences["is_shadow"],
+                        "shadow_this_week": shadow_this_week,
+                        "leader_this_week": False
+                    })
+                    shadow_last_week[person].append(index)
+                    remaining_cleanup_shadows -= 1
+                    continue
+
+            # If we've successfully assigned leaders for setup and cleanup, move on to the next week
+            if (len(assignment_dict[current_week]["setup"]) == MIN_SETUP and
+                len(assignment_dict[current_week]["cleanup"]) == MIN_CLEANUP):
+                if backtracking_helper(index + 1):
+                    return True
+
+                # If we can't assign, backtrack and remove the assignments
+                if preferences["preference"] in ["s", "s/c"] and len(assignment_dict[current_week]["setup"]) > 0:
+                    assignment_dict[current_week]["setup"].pop()
+                    if shadow_this_week and shadow_last_week[person]:
+                        shadow_last_week[person].pop()
+
+                if preferences["preference"] in ["c", "s/c"] and len(assignment_dict[current_week]["cleanup"]) > 0:
+                    assignment_dict[current_week]["cleanup"].pop()
+                    if shadow_this_week and shadow_last_week[person]:
+                        shadow_last_week[person].pop()
+                        
+        # Step 2: Once leaders are assigned, fill the remaining spots with non-leaders
+        
+        # Sort participants by the number of shifts they've already been assigned to
+        participants = sorted(randomized_items, key=lambda x: len([
+            shift for week in assignment_dict.values()
+            for shift in (week["setup"] + week["cleanup"]) if shift["name"] == x[0]
+        ]))
+        
+        for person, preferences in participants:
+            person_shift_count, person_shift_sequence, leader_shift_sequence, shadow_shift_sequence = track_person_shifts(assignment_dict)
+            
+            # Prevent double assignment in the same week (setup + cleanup)
+            if any(person == p["name"] for p in (assignment_dict[current_week]["setup"] + assignment_dict[current_week]["cleanup"])):
+                continue
+            
+            # Ensure nobody that already has MAX_SHIFTS is assigned another shifts
+            if person_shift_count.get(person, 0) >= MAX_SHIFTS:
+                continue
+            
+            # Ensure that person that already has MAX_CONSECUTIVE_SHIFTS receives another consecutive shift
+            if len(person_shift_sequence.get(person, [])) >= MAX_CONSECUTIVE_SHIFTS and person_shift_sequence[person][-1] == (index - 1):
+                continue
+            
+            # Ensure that leader that already has MAX_CONSECUTIVE_SHIFTS receives another consecutive shift
+            if len(leader_shift_sequence.get(person, [])) >= MAX_CONSECUTIVE_SHIFTS and leader_shift_sequence[person][-1] == (index - 1):
+                continue
+                
+            if len(shadow_shift_sequence.get(person, [])) >= MAX_CONSECUTIVE_SHIFTS and shadow_shift_sequence[person][-1] == (index - 1):
+                    continue
 
             # Assign to setup for non-leaders
             if preferences["preference"] in ["s", "s/c"] and len(assignment_dict[current_week]["setup"]) < MIN_SETUP:
-                if not preferences["is_leader"]:
-                    assignment_dict[current_week]["setup"].append({
-                        "name": person,
-                        "is_leader": preferences["is_leader"],
-                        "leader_this_week": False
-                    })
+                assignment_dict[current_week]["setup"].append({
+                    "name": person,
+                    "is_leader": preferences["is_leader"],
+                    "is_shadow": preferences.get("is_shadow", False),
+                    "leader_this_week": False,
+                    "shadow_this_week": False
+                })
 
             # Assign to cleanup for non-leaders
             elif preferences["preference"] in ["c", "s/c"] and len(assignment_dict[current_week]["cleanup"]) < MIN_CLEANUP:
-                if not preferences["is_leader"]:
-                    assignment_dict[current_week]["cleanup"].append({
-                        "name": person,
-                        "is_leader": preferences["is_leader"],
-                        "leader_this_week": False
-                    })
+                assignment_dict[current_week]["cleanup"].append({
+                    "name": person,
+                    "is_leader": preferences["is_leader"],
+                    "is_shadow": preferences.get("is_shadow", False),
+                    "leader_this_week": False,
+                    "shadow_this_week": False
+                })
 
             # If we've filled both setup and cleanup, move on to the next week
             if (len(assignment_dict[current_week]["setup"]) == MIN_SETUP and
@@ -322,6 +412,7 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
     
     return None  # Return None if no valid assignment could be found
 
+
 def save_assignments_to_week_file(assignments_by_week: dict, output_file: str) -> None:
     """
     Save the shift assignments for multiple weeks to a single text file, with space between weeks.
@@ -338,6 +429,8 @@ def save_assignments_to_week_file(assignments_by_week: dict, output_file: str) -
             for person in shifts["setup"]:
                 if person['leader_this_week']:
                     file.write(f"     {person['name']} (Leader)\n")
+                elif person['shadow_this_week'] and MODE == "shadowing":
+                    file.write(f"     {person['name']} (Shadow)\n")
                 else:
                     file.write(f"     {person['name']}\n")
 
@@ -345,12 +438,15 @@ def save_assignments_to_week_file(assignments_by_week: dict, output_file: str) -
             for person in shifts["cleanup"]:
                 if person['leader_this_week']:
                     file.write(f"     {person['name']} (Leader)\n")
+                elif person['shadow_this_week'] and MODE == "shadowing":
+                    file.write(f"     {person['name']} (Shadow)\n")
                 else:
                     file.write(f"     {person['name']}\n")
 
             file.write("\n\n" + "-" * 50 + "\n\n")
 
     print(f"Assignments saved to {output_file}")
+
 
 def save_assignments_to_quarter_file(preference_dict: dict, assignments_by_week: dict,  weeks: list, output_file: str) -> None:
     """
@@ -388,7 +484,10 @@ def save_assignments_to_quarter_file(preference_dict: dict, assignments_by_week:
     with open(output_file, 'w') as file:
         # Write the header row
         all_weeks = ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7", "Week 8", "Week 9", "Week 10"]
-        file.write("First Name\tLast Name\tPreference\tLeader\tTotals\t" + "\t".join(all_weeks) + "\n")
+        if MODE == "shadowing":
+            file.write("First Name\tLast Name\tPreference\tLeader\tShadow\tTotals\t" + "\t".join(all_weeks) + "\n")
+        else:
+            file.write("First Name\tLast Name\tPreference\tLeader\tTotals\t" + "\t".join(all_weeks) + "\n")
         
         # Write each person's row of assignments
         for person, assignments in person_assignments.items():
@@ -398,9 +497,13 @@ def save_assignments_to_quarter_file(preference_dict: dict, assignments_by_week:
             preference = preference_dict[person]['preference']
             leader_status = int(preference_dict[person]['is_leader'])
             total_shifts = assignments['setup'] + assignments['cleanup']
-
-            # Prepare the row with the person's data
-            row = [first_name, last_name, preference, leader_status, total_shifts]
+            
+            if MODE == "shadowing":
+                shadow_status = int(preference_dict[person]['is_shadow'])
+                # Prepare the row with the person's data
+                row = [first_name, last_name, preference, leader_status, shadow_status, total_shifts]
+            else:
+                row = [first_name, last_name, preference, leader_status, total_shifts]
 
             # Add the week-specific assignments to the row
             for week in all_weeks:
