@@ -257,7 +257,7 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
         return assignment_dict  # Return the successfully filled assignment
     return None  # Return None if no valid assignment could be found
 
-def save_assignments_to_file(assignments_by_week: dict, output_file: str) -> None:
+def save_assignments_to_week_file(assignments_by_week: dict, output_file: str) -> None:
     """
     Save the shift assignments for multiple weeks to a single text file, with space between weeks.
 
@@ -272,20 +272,83 @@ def save_assignments_to_file(assignments_by_week: dict, output_file: str) -> Non
             file.write("  Setup:\n")
             for person in shifts["setup"]:
                 if person['leader_this_week']:
-                    file.write(f"    - {person['name']} (Leader)\n")
+                    file.write(f"     {person['name']} (Leader)\n")
                 else:
-                    file.write(f"    - {person['name']}\n")
+                    file.write(f"     {person['name']}\n")
 
             file.write("\n  Cleanup:\n")
             for person in shifts["cleanup"]:
                 if person['leader_this_week']:
-                    file.write(f"    - {person['name']} (Leader)\n")
+                    file.write(f"     {person['name']} (Leader)\n")
                 else:
-                    file.write(f"    - {person['name']}\n")
+                    file.write(f"     {person['name']}\n")
 
             file.write("\n\n" + "-" * 50 + "\n\n")
 
     print(f"Assignments saved to {output_file}")
+
+def save_assignments_to_quarter_file(preference_dict: dict, assignments_by_week: dict,  weeks: list, output_file: str) -> None:
+    """
+    Save the shift assignments for multiple weeks to a single text file, with space between weeks.
+    
+    :param preference_dict: Dictionary with name, shift preference, and leadership status.
+    :param assignments_by_week: Dictionary where keys are week names (e.g., "Week 1") and values are assignment_dicts.
+    :param weeks: List of weeks to include in the output (e.g., ["Week 1", "Week 2", "Week 4", ...]).
+    :param output_file: Path to the output text file.
+    """
+    # Prepare a dictionary to store the final assignments for each person across all weeks
+    person_assignments = {person: {'setup': 0, 'cleanup': 0, 'leader': 0, 'weeks': {week: '' for week in weeks}} for person in preference_dict}
+
+    # Process the assignments from each week and fill the person's assignments
+    for week in assignments_by_week:
+        if week not in weeks:
+            continue  # Skip weeks not in the provided list
+
+        for shift_type in ["setup", "cleanup"]:
+            for person in assignments_by_week[week][shift_type]:
+                # Check if the person exists in the preference_dict and assign them to the week
+                if person['name'] in preference_dict:
+                    # Get preference status from preference_dict
+                    preference = preference_dict[person['name']]['preference']
+
+                    # Track the setup and cleanup assignments
+                    person_assignments[person['name']]['setup'] += 1 if shift_type == 'setup' else 0
+                    person_assignments[person['name']]['cleanup'] += 1 if shift_type == 'cleanup' else 0
+                    
+
+                    # Update the person's assignment for the week
+                    person_assignments[person['name']]['weeks'][week] = 's' if shift_type == "setup" else 'c'
+
+    # Write to the output file
+    with open(output_file, 'w') as file:
+        # Write the header row
+        all_weeks = ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7", "Week 8", "Week 9", "Week 10"]
+        file.write("First Name\tLast Name\tPreference\tLeader\tTotals\t" + "\t".join(all_weeks) + "\n")
+        
+        # Write each person's row of assignments
+        for person, assignments in person_assignments.items():
+            name_parts = person.split()
+            first_name = name_parts[0]
+            last_name = name_parts[-1]
+            preference = preference_dict[person]['preference']
+            leader_status = int(preference_dict[person]['is_leader'])
+            total_shifts = assignments['setup'] + assignments['cleanup']
+
+            # Prepare the row with the person's data
+            row = [first_name, last_name, preference, leader_status, total_shifts]
+
+            # Add the week-specific assignments to the row
+            for week in all_weeks:
+                if week in weeks:
+                    row.append(assignments['weeks'][week])
+                else:
+                    row.append("")
+
+            # Write the row to the file
+            file.write("\t".join(map(str, row)) + "\n")
+
+    print(f"Assignments saved to {output_file}")
+
 
 def run():
     file_name = "preferences.txt"
@@ -295,7 +358,8 @@ def run():
         raise ValueError("Not enough leaders to assign at least one per week.")
     assignment_dict = assign_shifts_backtracker(preference_dict, weeks)
     if assignment_dict:
-        save_assignments_to_file(assignment_dict, "output.txt")
+        save_assignments_to_week_file(assignment_dict, "week_schedule.txt")
+        save_assignments_to_quarter_file(preference_dict, assignment_dict, weeks, "quarter_schedule.txt")
     else:
         print("No valid assignment found.")
 
