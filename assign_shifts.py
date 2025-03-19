@@ -5,6 +5,8 @@ MIN_CLEANUP = 6
 REQUIRED_SETUP_LEADERS = 2
 REQUIRED_CLEANUP_LEADERS = 1
 MAX_SHIFTS = 5
+MIN_SHIFTS = 2
+MAX_CONSECUTIVE_SHIFTS = 2
 
 def parse_file(file : str) -> dict:
     with open(file, 'r') as file:
@@ -28,6 +30,51 @@ def parse_file(file : str) -> dict:
             preference_dict[name] = {"preference" : shift_preference, "is_leader": is_leader}
         return preference_dict
     return None
+
+
+def track_person_shifts(assignment_dict: dict):
+    """
+    Helper function to track total shifts, consecutive shifts, and consecutive leadership shifts for each person.
+
+    :param assignment_dict: Dictionary containing weekly shift assignments.
+    :return: person_shift_count, person_shift_sequence, leader_shift_sequence
+    """
+    person_shift_count = {}  # Tracks total shifts per person
+    person_shift_sequence = {}  # Tracks consecutive shifts per person
+    leader_shift_sequence = {}  # Tracks consecutive leadership shifts per person
+
+    for week_index, (week, shifts) in enumerate(assignment_dict.items()):
+        # Validate setup group
+        setup_group = shifts.get("setup", [])
+        # Validate cleanup group
+        cleanup_group = shifts.get("cleanup", [])
+
+        # Update shift and leadership tracking
+        for group, role in [(setup_group, "setup"), (cleanup_group, "cleanup")]:
+            for person in group:
+                name = person["name"]
+                is_leader = person["leader_this_week"]
+
+                # Track total shift count
+                person_shift_count[name] = person_shift_count.get(name, 0) + 1
+
+                # Track consecutive shifts
+                if name not in person_shift_sequence:
+                    person_shift_sequence[name] = []
+                if len(person_shift_sequence[name]) > 0 and person_shift_sequence[name][-1] != week_index - 1:
+                    person_shift_sequence[name] = []  # Reset if not consecutive
+                person_shift_sequence[name].append(week_index)
+
+                # Track consecutive leadership shifts
+                if is_leader:
+                    if name not in leader_shift_sequence:
+                        leader_shift_sequence[name] = []
+                    if len(leader_shift_sequence[name]) > 0 and leader_shift_sequence[name][-1] != week_index - 1:
+                        leader_shift_sequence[name] = []  # Reset if not consecutive
+                    leader_shift_sequence[name].append(week_index)
+
+    return person_shift_count, person_shift_sequence, leader_shift_sequence
+
 
 def is_valid_assignment(assignment_dict: dict) -> bool:
     """
@@ -92,19 +139,23 @@ def is_valid_assignment(assignment_dict: dict) -> bool:
     if any(count > MAX_SHIFTS for count in person_shift_count.values()):
         print("more than max shifts", person_shift_count)
         return False
+    
+    # # Validate total shift count per person
+    if any(count < MIN_SHIFTS for count in person_shift_count.values()):
+        print("less than min shifts", person_shift_count)
+        return False
 
     # Validate consecutive shift rule (no more than 2 shifts in a row)
-    if any(len(sequence) > 2 for sequence in person_shift_sequence.values()):
+    if any(len(sequence) > MAX_CONSECUTIVE_SHIFTS for sequence in person_shift_sequence.values()):
         print("more than 2 consecutive shifts")
         return False
 
     # Validate consecutive leadership rule (leaders can't lead more than 2 weeks in a row)
-    if any(len(sequence) > 2 for sequence in leader_shift_sequence.values()):
+    if any(len(sequence) > MAX_CONSECUTIVE_SHIFTS for sequence in leader_shift_sequence.values()):
         print("more than 2 consecutive leader shifts")
         return False
 
     return True
-
     
 
 def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
@@ -132,7 +183,10 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
         :return: True if a valid assignment is found, False otherwise.
         """
         if index == len(weeks):
-            return True  # All weeks are successfully filled, base case
+            valid = is_valid_assignment(assignment_dict)
+            if not valid:
+                return assign_shifts_backtracker(preference_dict, weeks)
+            return valid
 
         current_week = weeks[index]
 
@@ -151,16 +205,25 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
 
         remaining_setup_leaders = REQUIRED_SETUP_LEADERS - setup_leader_count
         remaining_cleanup_leaders = REQUIRED_CLEANUP_LEADERS - cleanup_leader_count
+        
 
         # Step 1: First, try to assign leaders to setup and cleanup
         for person, preferences in participants:
+            person_shift_count, person_shift_sequence, leader_shift_sequence = track_person_shifts(assignment_dict)
+            
             # Prevent double assignment in the same week (setup + cleanup)
             if any(person == p["name"] for p in (assignment_dict[current_week]["setup"] + assignment_dict[current_week]["cleanup"])):
                 continue
+            
+            if person_shift_count.get(person, 0) >= MAX_SHIFTS:
+                continue
+            
+            if len(leader_shift_sequence.get(person, [])) >= MAX_CONSECUTIVE_SHIFTS and leader_shift_sequence[person][-1] == (index - 1):
+                continue
 
             # Assign to setup first (leaders only)
-            if preferences["preference"] in ["s", "s/c"] and len(assignment_dict[current_week]["setup"]) < MIN_SETUP:
-                if preferences["is_leader"] and remaining_setup_leaders > 0:
+            if preferences["preference"] in ["s", "s/c"] and len(assignment_dict[current_week]["setup"]) < MIN_SETUP and \
+                preferences["is_leader"] and remaining_setup_leaders > 0:
                     leader_this_week = True
                     assignment_dict[current_week]["setup"].append({
                         "name": person,
@@ -169,17 +232,10 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
                     })
                     leader_last_week[person].append(index)
                     remaining_setup_leaders -= 1
-                elif not preferences["is_leader"]:
-                    leader_this_week = False
-                    assignment_dict[current_week]["setup"].append({
-                        "name": person,
-                        "is_leader": preferences["is_leader"],
-                        "leader_this_week": leader_this_week
-                    })
-
+                    continue
             # Assign to cleanup (leaders only)
-            elif preferences["preference"] in ["c", "s/c"] and len(assignment_dict[current_week]["cleanup"]) < MIN_CLEANUP:
-                if preferences["is_leader"] and remaining_cleanup_leaders > 0:
+            elif preferences["preference"] in ["c", "s/c"] and len(assignment_dict[current_week]["cleanup"]) < MIN_CLEANUP and \
+                preferences["is_leader"] and remaining_cleanup_leaders > 0:
                     leader_this_week = True
                     assignment_dict[current_week]["cleanup"].append({
                         "name": person,
@@ -188,13 +244,7 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
                     })
                     leader_last_week[person].append(index)
                     remaining_cleanup_leaders -= 1
-                elif not preferences["is_leader"]:
-                    leader_this_week = False
-                    assignment_dict[current_week]["cleanup"].append({
-                        "name": person,
-                        "is_leader": preferences["is_leader"],
-                        "leader_this_week": leader_this_week
-                    })
+                    continue
 
             # If we've successfully assigned leaders for setup and cleanup, move on to the next week
             if (len(assignment_dict[current_week]["setup"]) == MIN_SETUP and
@@ -215,8 +265,16 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
 
         # Step 2: Once leaders are assigned, fill the remaining spots with non-leaders
         for person, preferences in participants:
+            # person_shift_count, person_shift_sequence, leader_shift_sequence = track_person_shifts(assignment_dict)
+            
             # Prevent double assignment in the same week
             if any(person == p["name"] for p in (assignment_dict[current_week]["setup"] + assignment_dict[current_week]["cleanup"])):
+                continue
+            
+            if person_shift_count.get(person, 0) >= MAX_SHIFTS:
+                continue
+            
+            if len(person_shift_sequence.get(person, [])) >= MAX_CONSECUTIVE_SHIFTS and person_shift_sequence[person][-1] == (index - 1):
                 continue
 
             # Assign to setup for non-leaders
@@ -255,6 +313,7 @@ def assign_shifts_backtracker(preference_dict: dict, weeks: list) -> dict:
     # Start backtracking from week 0
     if backtracking_helper(0):
         return assignment_dict  # Return the successfully filled assignment
+    
     return None  # Return None if no valid assignment could be found
 
 def save_assignments_to_week_file(assignments_by_week: dict, output_file: str) -> None:
